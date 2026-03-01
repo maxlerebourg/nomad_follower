@@ -1,0 +1,9 @@
+FROM alpine:3.23 AS final
+
+COPY nomad_follower /nomad_follower
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["./nomad_follower"]

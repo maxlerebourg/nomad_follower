@@ -1,7 +1,7 @@
-FROM golang:1.16-alpine AS builder
+FROM golang:1.25-alpine AS builder
 ADD . /build
 RUN cd /build && go install -mod=mod
 
-FROM alpine:latest
+FROM alpine:3.23
 COPY --from=builder /go/bin/nomad_follower .
 CMD ["./nomad_follower"]
