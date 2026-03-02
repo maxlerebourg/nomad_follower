@@ -18,6 +18,7 @@ builds:
 dockers_v2:
   - images:
       - "ghcr.io/{{ .Env.REPO_OWNER }}/{{ .ProjectName }}"
+    dockerfile: Dockerfile.release
     tags:
       - "v{{ .Version }}"
       - "latest"
