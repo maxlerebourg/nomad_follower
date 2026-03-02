@@ -35,7 +35,6 @@ jobs:
 
       - name: Install go dependencies
         run: |
-          cd server
           go mod vendor
 
       - name: Run GoReleaser
