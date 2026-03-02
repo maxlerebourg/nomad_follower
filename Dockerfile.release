@@ -4,6 +4,4 @@ ARG TARGETPLATFORM
 
 COPY $TARGETPLATFORM/nomad_follower /nomad_follower
 
-USER nonroot:nonroot
-
 ENTRYPOINT ["./nomad_follower"]
