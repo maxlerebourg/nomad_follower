@@ -17,7 +17,7 @@ builds:
 
 dockers_v2:
   - images:
-      - "ghcr.io/{{ .Env.REPO_OWNER }}/{{ .ProjectName }}:v{{ .Version }}"
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/{{ .ProjectName }}"
     tags:
       - "v{{ .Version }}"
       - "latest"
