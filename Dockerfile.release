@@ -1,8 +1,8 @@
 FROM alpine:3.23 AS final
 
-COPY nomad_follower /nomad_follower
+ARG TARGETPLATFORM
 
-EXPOSE 8080
+COPY $TARGETPLATFORM/nomad_follower /nomad_follower
 
 USER nonroot:nonroot
 
