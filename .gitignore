@@ -1,2 +1,4 @@
 nomad_follower
 tmp
+vendor
+dist
