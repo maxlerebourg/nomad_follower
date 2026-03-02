@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: server/go.mod
+          go-version-file: go.mod
           check-latest: true
 
       - name: Install go dependencies

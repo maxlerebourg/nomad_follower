@@ -11,7 +11,7 @@ docker run -v log_folder:/log -e LOG_TAG="logging" "-e LOG_FILE="/log/nomad-forw
 Example Nomad job file available [here](./nomad_follower.nomad), with an example job outputting random logs [here](./example.nomad).
 
 nomad_follower:
- - will follow all allocations if it contains service tag ```nomad_follower``` (can be changed with `LOG_TAG` environment variable) on the worker and tail the allocation logs to the aggregate log file. 
+ - will follow all allocations if it contains service tag ```nomad_follower.enabled=true``` (can be changed with `LOG_TAG` environment variable) on the worker and tail the allocation logs to the aggregate log file. 
  - will stop following completed allocations and will start following new allocations as they become available. 
  - can be deployed with nomad in a system task group along with a log collector. The aggregate log file can then be shared with the log collector by writing the aggregate log file into the shared allocation folder. 
  - formats log entries as json formatted logs. It will convert string formatted logs to json formatted logs by passing the log entry in the ```message``` key. 

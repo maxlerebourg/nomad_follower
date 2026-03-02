@@ -52,6 +52,9 @@ func main() {
 		logTag = DEFAULT_LOG_TAG
 	}
 
+	logEnabledByDefaultEnv := os.Getenv("LOG_ENABLED_BY_DEFAULT")
+	logEnabledByDefault := logEnabledByDefaultEnv == "true"
+
 	createLogFile(logFile, logger)
 	fileLogger := log.New(&lumberjack.Logger{
 		Filename:   logFile,
@@ -77,7 +80,7 @@ func main() {
 		)
 	}
 
-	af, err := NewAllocationFollower(nomadConfig, logger, logTag)
+	af, err := NewAllocationFollower(nomadConfig, logger, logTag, logEnabledByDefault)
 	if err != nil {
 		logger.Errorf("main", "Error creating Allocation Follower: %s", err)
 		return

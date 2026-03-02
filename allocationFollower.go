@@ -32,24 +32,26 @@ type SavedTask struct {
 //AllocationFollower a container for the list of followed allocations
 type AllocationFollower struct {
 	Allocations map[string]*FollowedAllocation
-	Nomad       NomadConfig
-	NodeID      string
-	OutChan     chan string
-	Quit        chan bool
-	Ticker      *time.Ticker
-	log         Logger
-	logTag      string
+	Nomad               NomadConfig
+	NodeID              string
+	OutChan             chan string
+	Quit                chan bool
+	Ticker              *time.Ticker
+	log                 Logger
+	logTag              string
+	logEnabledByDefault bool
 }
 
 //NewAllocationFollower Creates a new allocation follower
-func NewAllocationFollower(nomad NomadConfig, logger Logger, logTag string) (a *AllocationFollower, e error) {
+func NewAllocationFollower(nomad NomadConfig, logger Logger, logTag string, logEnabledByDefault bool) (a *AllocationFollower, e error) {
 	return &AllocationFollower{
-		Allocations: make(map[string]*FollowedAllocation),
-		Nomad:       nomad,
-		NodeID:      "",
-		Quit:        make(chan bool),
-		log:         logger,
-		logTag:      logTag,
+		Allocations:         make(map[string]*FollowedAllocation),
+		Nomad:               nomad,
+		NodeID:              "",
+		Quit:                make(chan bool),
+		log:                 logger,
+		logTag:              logTag,
+		logEnabledByDefault: logEnabledByDefault,
 	}, nil
 }
 
@@ -240,7 +242,7 @@ func (a *AllocationFollower) collectAllocations(save *SavePoint) error {
 		runState := alloc.DesiredStatus == "run" || alloc.ClientStatus == "running"
 		if record == nil && runState {
 			// handle new alloc records w/ potentially saved state
-			falloc := NewFollowedAllocation(alloc, a.Nomad, a.OutChan, a.log, a.logTag)
+			falloc := NewFollowedAllocation(alloc, a.Nomad, a.OutChan, a.log, a.logTag, a.logEnabledByDefault)
 			if save != nil {
 				a.log.Debug("AllocationFollower.collectAllocations", "Restoring saved allocations")
 				savedAlloc := save.SavedAllocs[alloc.ID]

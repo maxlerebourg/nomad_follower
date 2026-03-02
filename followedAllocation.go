@@ -2,31 +2,34 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	nomadApi "github.com/hashicorp/nomad/api"
 )
 
 //FollowedAllocation a container for a followed allocations log process
 type FollowedAllocation struct {
-	Alloc      *nomadApi.Allocation
-	Nomad      NomadConfig
-	OutputChan chan string
-	Quit       chan struct{}
-	Tasks      []*FollowedTask
-	log        Logger
-	logTag     string
+	Alloc               *nomadApi.Allocation
+	Nomad               NomadConfig
+	OutputChan          chan string
+	Quit                chan struct{}
+	Tasks               []*FollowedTask
+	log                 Logger
+	logTag              string
+	logEnabledByDefault bool
 }
 
 //NewFollowedAllocation creates a new followed allocation
-func NewFollowedAllocation(alloc *nomadApi.Allocation, nomad NomadConfig, outChan chan string, logger Logger, logTag string) *FollowedAllocation {
+func NewFollowedAllocation(alloc *nomadApi.Allocation, nomad NomadConfig, outChan chan string, logger Logger, logTag string, logEnabledByDefault bool) *FollowedAllocation {
 	return &FollowedAllocation{
-		Alloc:      alloc,
-		Nomad:      nomad,
-		OutputChan: outChan,
-		Quit:       make(chan struct{}),
-		Tasks:      make([]*FollowedTask, 0),
-		log:        logger,
-		logTag:     logTag,
+		Alloc:               alloc,
+		Nomad:               nomad,
+		OutputChan:          outChan,
+		Quit:                make(chan struct{}),
+		Tasks:               make([]*FollowedTask, 0),
+		log:                 logger,
+		logTag:              logTag,
+		logEnabledByDefault: logEnabledByDefault,
 	}
 }
 
@@ -41,13 +44,17 @@ func (f *FollowedAllocation) Start(save *SavedAlloc) {
 	for _, tg := range f.Alloc.Job.TaskGroups {
 		for _, task := range tg.Tasks {
 			ft := NewFollowedTask(f.Alloc, *tg.Name, task, f.Nomad, f.Quit, f.OutputChan, f.log)
-			skip := true
+			enabled := f.logEnabledByDefault
 			for _, s := range ft.logTemplate.ServiceTags {
-				if s == f.logTag {
-					skip = false
+				if strings.HasPrefix(s, f.logTag) {
+					parts := strings.SplitN(s, ".enabled", 2)
+					if len(parts) == 2  {
+						enabled = parts[1] == "=true" || parts[1] == ""
+						break
+					}
 				}
 			}
-			if !skip {
+			if enabled {
 				if save != nil {
 					f.log.Debug("FollowedAllocation.Start", "Restoring saved allocation data")
 					key := fmt.Sprintf("%s:%s", *tg.Name, task.Name)

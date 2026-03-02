@@ -34,9 +34,9 @@ type NomadLog struct {
 	JobName       string            `json:"job_name"`
 	JobMeta       map[string]string `json:"job_meta"`
 	NodeName      string            `json:"node_name"`
-	ServiceName   string            `json:"service_name"`
-	ServiceTags   []string          `json:"service_tags"`
-	ServiceTagMap map[string]string `json:"service_tag_map"`
+	ServiceName   string            `json:"-"`
+	ServiceTags   []string          `json:"-"`
+	ServiceTagMap map[string]string `json:"-"`
 	TaskMeta      map[string]string `json:"task_meta"`
 	TaskName      string            `json:"task_name"`
 	// these all set at log time
