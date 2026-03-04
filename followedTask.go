@@ -30,11 +30,11 @@ var BACKOFF_DELAY = 8
 // ouput is preserved under the 'message' field and JSON log output is nested
 // under the 'data' field.
 type NomadLog struct {
-	AllocId       string            `json:"alloc_id"`
-	JobName       string            `json:"job_name"`
-	NodeName      string            `json:"node_name"`
-	TaskMeta      map[string]string `json:"-"`
-	TaskName      string            `json:"task_name"`
+	AllocId  string            `json:"alloc_id"`
+	JobName  string            `json:"job_name"`
+	NodeName string            `json:"node_name"`
+	TaskMeta map[string]string `json:"-"`
+	TaskName string            `json:"task_name"`
 	// these all set at log time
 	Timestamp string                 `json:"timestamp"`
 	Message   string                 `json:"message"`
@@ -49,7 +49,7 @@ func (n *NomadLog) ToJSON() (string, error) {
 	return string(result[:]), nil
 }
 
-//FollowedTask a container for a followed task log process
+// FollowedTask a container for a followed task log process
 type FollowedTask struct {
 	Alloc       *nomadApi.Allocation
 	TaskGroup   string
@@ -63,7 +63,7 @@ type FollowedTask struct {
 	outState    StreamState
 }
 
-//NewFollowedTask creates a new followed task
+// NewFollowedTask creates a new followed task
 func NewFollowedTask(alloc *nomadApi.Allocation, taskGroup string, task *nomadApi.Task, nomad NomadConfig, quit chan struct{}, output chan string, logger Logger) *FollowedTask {
 	logTemplate := createLogTemplate(alloc, task)
 	return &FollowedTask{
@@ -159,7 +159,7 @@ func CalculateOffset(state StreamState, file string, size int64) int64 {
 	return calculatedOffset
 }
 
-//Start starts following a task for an allocation
+// Start starts following a task for an allocation
 func (ft *FollowedTask) Start(save *SavedTask) {
 	//config := nomadApi.DefaultConfig()
 	//config.WaitTime = 5 * time.Minute
@@ -321,25 +321,30 @@ func getServiceTagMap(service nomadApi.Service) map[string]string {
 // processFrame takes a frame and determines if each line is JSON, or a single or multi-line log.
 //
 // Requirements of operation:
-// - JSON logs must be on a single line to be properly parsed aka newlines escaped if included
-// - String logs must contain a datetime as close to the beginning of the line as possible
-// - Multi-line string logs should not contain datetimes near the beginning of the string
-//   to be grouped properly
+//   - JSON logs must be on a single line to be properly parsed aka newlines escaped if included
+//   - String logs must contain a datetime as close to the beginning of the line as possible
+//   - Multi-line string logs should not contain datetimes near the beginning of the string
+//     to be grouped properly
 //
 // Pseudo code for multi-line string logs:
 // if has a timestamp
-//   if multiline buf is empty
-//     add to multiline buf + continue
-//   else
-//     flush multiline buf as json
-//     add to multiline buf + continue
+//
+//	if multiline buf is empty
+//	  add to multiline buf + continue
+//	else
+//	  flush multiline buf as json
+//	  add to multiline buf + continue
+//
 // else
-//   if multiline buf is empty
-//     add frag header + line to multiline buf + continue
-//   else
-//     add line to multiline buf + continue
+//
+//	if multiline buf is empty
+//	  add frag header + line to multiline buf + continue
+//	else
+//	  add line to multiline buf + continue
+//
 // Note: last timestamp and multiline buffer must be passed to and received from the calling
-//       function to properly mark timestamps and group logs between calls.
+//
+//	function to properly mark timestamps and group logs between calls.
 func (ft *FollowedTask) processFrame(frame *nomadApi.StreamFrame, streamState StreamState) ([]string, StreamState) {
 	logContext := "FollowedTask.processFrame"
 	messages := strings.Split(string(frame.Data[:]), "\n")
@@ -349,11 +354,7 @@ func (ft *FollowedTask) processFrame(frame *nomadApi.StreamFrame, streamState St
 			continue
 		}
 		if isJSON(message) {
-			ft.log.Tracef(
-				logContext,
-				"Found single-line json log: %s",
-				message,
-			)
+			ft.log.Tracef(logContext, "Found single-line json log: %s", message)
 			// no multi-line buffering for valid single-line json
 			l := wrapJsonLog(ft.logTemplate, message)
 			s, err := l.ToJSON()
@@ -377,11 +378,7 @@ func (ft *FollowedTask) processFrame(frame *nomadApi.StreamFrame, streamState St
 					message,
 				)
 				if len(streamState.MultiLineBuf) == 0 {
-					ft.log.Tracef(
-						logContext,
-						"Beginning multiline, msg: %s",
-						message,
-					)
+					ft.log.Tracef(logContext, "Beginning multiline, msg: %s", message)
 					streamState.BufAdd(message)
 				} else {
 					// flush multiline buf + start over
@@ -411,24 +408,38 @@ func (ft *FollowedTask) processFrame(frame *nomadApi.StreamFrame, streamState St
 			} else {
 				if len(streamState.MultiLineBuf) == 0 {
 					// log fragment -- bad parsing?
-					ft.log.Tracef(
-						logContext,
-						"Log fragment case, msg: %s",
-						message,
-					)
-					header := createFragmentHeader(streamState.LastTimestamp)
+					ft.log.Tracef(logContext, "Log fragment case, msg: %s", message)
+					header := fmt.Sprintf("%s Log Fragment Header", timestamp)
 					streamState.BufAdd(header)
 					streamState.BufAdd(message)
 				} else {
-					ft.log.Tracef(
-						logContext,
-						"Appending to existing multiline, msg: %s",
-						message,
-					)
+					ft.log.Tracef(logContext, "Appending to existing multiline, msg: %s", message)
 					streamState.BufAdd(message)
 				}
 			}
 		}
+	}
+	// Flush any remaining buffered content at the end of the frame
+	// This ensures logs are sent immediately, not waiting for the next log line
+	if len(streamState.MultiLineBuf) > 0 {
+		ft.log.Tracef(
+			logContext,
+			"Flushing remaining multiline buffer at end of frame:\n%s\n",
+			streamState.MultiLineBuf,
+		)
+		l := createJsonLog(ft.logTemplate, streamState.MultiLineBuf, streamState.LastTimestamp)
+		s, err := l.ToJSON()
+		if err != nil {
+			ft.log.DeadLetterf(
+				logContext,
+				l,
+				"Error building json log message on flush: %v",
+				err,
+			)
+		} else {
+			jsons = append(jsons, s)
+		}
+		streamState.BufReset()
 	}
 	return jsons, streamState
 }
@@ -443,10 +454,6 @@ func getJSONMessage(s string) map[string]interface{} {
 	json.Unmarshal([]byte(s), &js)
 
 	return js
-}
-
-func createFragmentHeader(timestamp string) string {
-	return fmt.Sprintf("%s Log Fragment Header")
 }
 
 func wrapJsonLog(logTmpl NomadLog, line string) NomadLog {

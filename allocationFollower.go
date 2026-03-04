@@ -29,21 +29,21 @@ type SavedTask struct {
 	StdErrOffsets map[string]int64 `json:"stderr_offsets"`
 }
 
-//AllocationFollower a container for the list of followed allocations
+// AllocationFollower a container for the list of followed allocations
 type AllocationFollower struct {
-	Allocations map[string]*FollowedAllocation
+	Allocations         map[string]*FollowedAllocation
 	Nomad               NomadConfig
 	NodeID              string
 	OutChan             chan string
 	Quit                chan bool
 	Ticker              *time.Ticker
 	log                 Logger
-	logMeta              string
+	logMeta             string
 	logEnabledByDefault bool
 	localNodeOnly       bool
 }
 
-//NewAllocationFollower Creates a new allocation follower
+// NewAllocationFollower Creates a new allocation follower
 func NewAllocationFollower(nomad NomadConfig, logger Logger, logMeta string, logEnabledByDefault, localNodeOnly bool) (a *AllocationFollower, e error) {
 	return &AllocationFollower{
 		Allocations:         make(map[string]*FollowedAllocation),
@@ -51,7 +51,7 @@ func NewAllocationFollower(nomad NomadConfig, logger Logger, logMeta string, log
 		NodeID:              "",
 		Quit:                make(chan bool),
 		log:                 logger,
-		logMeta:              logMeta,
+		logMeta:             logMeta,
 		logEnabledByDefault: logEnabledByDefault,
 		localNodeOnly:       localNodeOnly,
 	}, nil
@@ -78,7 +78,7 @@ func (a *AllocationFollower) SetNodeID() error {
 	return err
 }
 
-//Start registers and de registers allocation followers
+// Start registers and de registers allocation followers
 func (a *AllocationFollower) Start(duration time.Duration, savePath string) <-chan string {
 	logContext := "AllocationFollower.Start"
 	a.Ticker = time.NewTicker(duration)
@@ -140,7 +140,7 @@ func (a *AllocationFollower) Start(duration time.Duration, savePath string) <-ch
 	return a.OutChan
 }
 
-//Stop stops all followed allocations and exits
+// Stop stops all followed allocations and exits
 func (a *AllocationFollower) Stop() {
 	a.Quit <- true
 
@@ -238,10 +238,10 @@ func (a *AllocationFollower) restoreSavePoint(path string) *SavePoint {
 
 func (a *AllocationFollower) collectAllocations(save *SavePoint) error {
 	a.log.Debug("AllocationFollower.collectAllocations", "Collecting allocations")
-	
+
 	var allocs []*nomadApi.Allocation
 	var err error
-	
+
 	nodeReader := a.Nomad.Client().Nodes()
 	if a.localNodeOnly {
 		// Collect only allocations from the local node
@@ -255,7 +255,7 @@ func (a *AllocationFollower) collectAllocations(save *SavePoint) error {
 		if err != nil {
 			return err
 		}
-		
+
 		allocs = make([]*nomadApi.Allocation, 0)
 		for _, node := range nodes {
 			nodeAllocs, _, err := nodeReader.Allocations(node.ID, &nomadApi.QueryOptions{})

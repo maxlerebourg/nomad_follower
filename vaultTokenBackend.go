@@ -17,7 +17,7 @@ type NomadConfig interface {
 type NomadEnvAuth struct {
 	client *nomadApi.Client
 	config *nomadApi.Config
-	log Logger
+	log    Logger
 }
 
 // Client returns a pointer to the internal Nomad client struct.
@@ -52,14 +52,14 @@ func NewNomadEnvAuth(nomadConfig *nomadApi.Config, logger Logger) *NomadEnvAuth 
 type NomadRenewableAuth struct {
 	client *nomadApi.Client
 	config *nomadApi.Config
-	log Logger
+	log    Logger
 
 	vaultClient *vaultApi.Client
 	vaultConfig *vaultApi.Config
 
 	nomadTokenBackend string
-	circuitBreak time.Duration
-	lastRenewTime time.Time
+	circuitBreak      time.Duration
+	lastRenewTime     time.Time
 }
 
 // Client returns a pointer to the internal Nomad client struct.

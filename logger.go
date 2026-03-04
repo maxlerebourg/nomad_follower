@@ -12,6 +12,7 @@ import (
 
 // LogLevel provides compariable levels and a string representation.
 type LogLevel int
+
 const (
 	_ LogLevel = iota
 	TRACE
