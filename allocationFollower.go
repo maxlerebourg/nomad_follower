@@ -40,10 +40,11 @@ type AllocationFollower struct {
 	log                 Logger
 	logTag              string
 	logEnabledByDefault bool
+	localNodeOnly       bool
 }
 
 //NewAllocationFollower Creates a new allocation follower
-func NewAllocationFollower(nomad NomadConfig, logger Logger, logTag string, logEnabledByDefault bool) (a *AllocationFollower, e error) {
+func NewAllocationFollower(nomad NomadConfig, logger Logger, logTag string, logEnabledByDefault, localNodeOnly bool) (a *AllocationFollower, e error) {
 	return &AllocationFollower{
 		Allocations:         make(map[string]*FollowedAllocation),
 		Nomad:               nomad,
@@ -52,6 +53,7 @@ func NewAllocationFollower(nomad NomadConfig, logger Logger, logTag string, logE
 		log:                 logger,
 		logTag:              logTag,
 		logEnabledByDefault: logEnabledByDefault,
+		localNodeOnly:       localNodeOnly,
 	}, nil
 }
 
@@ -81,6 +83,12 @@ func (a *AllocationFollower) Start(duration time.Duration, savePath string) <-ch
 	logContext := "AllocationFollower.Start"
 	a.Ticker = time.NewTicker(duration)
 	a.OutChan = make(chan string)
+
+	if a.localNodeOnly {
+		a.log.Info(logContext, "Starting in LOCAL NODE ONLY mode")
+	} else {
+		a.log.Info(logContext, "Starting in ALL NODES mode")
+	}
 
 	go func() {
 		defer a.Ticker.Stop()
@@ -202,7 +210,7 @@ func (a *AllocationFollower) restoreSavePoint(path string) *SavePoint {
 	if err != nil {
 		return nil
 	}
-	if savePoint.NodeID != a.NodeID {
+	if a.localNodeOnly && savePoint.NodeID != a.NodeID {
 		a.log.Errorf(
 			logContext,
 			"Cannot restore save from '%s' NodeID differs.",
@@ -230,11 +238,33 @@ func (a *AllocationFollower) restoreSavePoint(path string) *SavePoint {
 
 func (a *AllocationFollower) collectAllocations(save *SavePoint) error {
 	a.log.Debug("AllocationFollower.collectAllocations", "Collecting allocations")
+	
+	var allocs []*nomadApi.Allocation
+	var err error
+	
 	nodeReader := a.Nomad.Client().Nodes()
-	allocs, _, err := nodeReader.Allocations(a.NodeID, &nomadApi.QueryOptions{})
-
-	if err != nil {
-		return err
+	if a.localNodeOnly {
+		// Collect only allocations from the local node
+		allocs, _, err = nodeReader.Allocations(a.NodeID, &nomadApi.QueryOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		// Collect allocations from all nodes
+		nodes, _, err := nodeReader.List(&nomadApi.QueryOptions{})
+		if err != nil {
+			return err
+		}
+		
+		allocs = make([]*nomadApi.Allocation, 0)
+		for _, node := range nodes {
+			nodeAllocs, _, err := nodeReader.Allocations(node.ID, &nomadApi.QueryOptions{})
+			if err != nil {
+				a.log.Errorf("AllocationFollower.collectAllocations", "Error collecting allocations for node %s: %v", node.ID, err)
+				continue
+			}
+			allocs = append(allocs, nodeAllocs...)
+		}
 	}
 
 	for _, alloc := range allocs {

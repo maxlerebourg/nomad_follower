@@ -1,19 +1,19 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
 )
 
-const RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
-
 // LogLevel provides compariable levels and a string representation.
 type LogLevel int
 const (
-	_ LogLevel = iota * 10
+	_ LogLevel = iota
 	TRACE
 	DEBUG
 	INFO
@@ -37,82 +37,46 @@ func (l LogLevel) String() string {
 	return s
 }
 
-func (l LogLevel) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + l.String() + `"`), nil
-}
-
-// FollowerLog structures log output from Nomad Follower and dead letters.
-type FollowerLog struct {
-	Name string `json:"name"`
-	Message string `json:"message"`
-	Datetime string `json:"datetime"`
-	Level LogLevel `json:"log_level,string"`
-	Data map[string]interface{} `json:"data"`
-}
-
-func (f FollowerLog) String() string {
-	// function to handle retries
-	marshal := func(l FollowerLog) ([]byte, error) {
-		return json.Marshal(l)
-	}
-	s, err := marshal(f)
-	if err != nil {
-		// error likely with data map
-		retryMsg := fmt.Sprintf(
-			"Original Msg: '%s' Original Level: '%s' Original Data: '%#v'",
-			f.Message,
-			f.Level,
-			f.Data,
-		)
-		retryLog := NewFollowerLog(
-			fmt.Sprintf("DeadLetter.%s", f.Name),
-			retryMsg,
-			DEADLETTER,
-			nil,
-		)
-		s, err = marshal(retryLog)
-		if err != nil {
-			// should really never get here
-			panic("Unparsable dead letter")
-		}
-	}
-	return string(s)
-}
-
-// NewFollowerLog creates a new FollowerLog and attempts to recover dead letters.
-func NewFollowerLog(name, message string, level LogLevel, data map[string]interface{}) FollowerLog {
-	now := time.Now()
-	datetime := now.Format(RFC3339Milli)
-	l := FollowerLog{}
-	l.Name = name
-	l.Message = message
-	l.Level = level
-	l.Data = data
-	l.Datetime = datetime
-	return l
-}
-
-func NewDeadLetter(name, message string, rawLog NomadLog) FollowerLog {
-	data := make(map[string]interface{})
-	// TODO determine what to do if err occurs here
-	_ = mapstructure.Decode(rawLog, &data)
-	return NewFollowerLog(name, message, DEADLETTER, data)
-}
-
 // Logger acts as a single config point for emitting FollowerLogs as JSON.
 type Logger struct {
 	verbosity LogLevel
+	logger    *slog.Logger
+}
+
+// NewLogger creates a new Logger with the specified verbosity level.
+func NewLogger(verbosity LogLevel) Logger {
+	// Create a JSON handler for slog
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slogLevelFromLogLevel(verbosity),
+	})
+	return Logger{
+		verbosity: verbosity,
+		logger:    slog.New(handler),
+	}
+}
+
+// slogLevelFromLogLevel converts our custom LogLevel to slog.Level
+func slogLevelFromLogLevel(level LogLevel) slog.Level {
+	switch level {
+	case TRACE:
+		return slog.LevelDebug - 1 // Trace is lower than Debug
+	case DEBUG:
+		return slog.LevelDebug
+	case INFO:
+		return slog.LevelInfo
+	case ERROR:
+		return slog.LevelError
+	case DEADLETTER:
+		return slog.LevelError + 1 // DeadLetter is higher than Error
+	default:
+		return slog.LevelInfo
+	}
 }
 
 func (l Logger) logAtLevel(name string, level LogLevel, message string) {
-	n := NewFollowerLog(
-		name,
-		message,
-		level,
-		make(map[string]interface{}),
-	)
 	if level >= l.verbosity {
-		fmt.Println(n)
+		slogLevel := slogLevelFromLogLevel(level)
+		l.logger.Log(context.Background(), slogLevel, message, slog.String("name", name))
 	}
 }
 
@@ -154,20 +118,23 @@ func (l Logger) Errorf(name, message string, f ...interface{}) {
 }
 
 func (l Logger) DeadLetter(name string, rawLog NomadLog, message string) {
-	n := NewDeadLetter(
-		name,
-		message,
-		rawLog,
-	)
-	fmt.Println(n)
+	data := make(map[string]interface{})
+	_ = mapstructure.Decode(rawLog, &data)
+
+	// Convert data map to slog attributes
+	attrs := []slog.Attr{
+		slog.String("name", name),
+		slog.String("log_level", DEADLETTER.String()),
+		slog.Time("datetime", time.Now()),
+	}
+	for k, v := range data {
+		attrs = append(attrs, slog.Any(k, v))
+	}
+
+	l.logger.LogAttrs(context.Background(), slogLevelFromLogLevel(DEADLETTER), message, attrs...)
 }
 
 func (l Logger) DeadLetterf(name string, rawLog NomadLog, message string, f ...interface{}) {
 	msg := fmt.Sprintf(message, f...)
-	n := NewDeadLetter(
-		name,
-		msg,
-		rawLog,
-	)
-	fmt.Println(n)
+	l.DeadLetter(name, rawLog, msg)
 }
