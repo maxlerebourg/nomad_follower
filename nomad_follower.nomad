@@ -36,7 +36,7 @@ job "log-shipping" {
 
       env {
         VERBOSE    = 4
-        LOG_TAG    = "logging"
+        LOG_META    = "logging"
         LOG_FILE   = "${NOMAD_ALLOC_DIR}/nomad-logs.log"
         NOMAD_ADDR = "http://172.17.0.1:4646"
       }

@@ -47,9 +47,9 @@ func main() {
 		saveFile = DEFAULT_SAVE_FILE
 	}
 
-	logTag := os.Getenv("LOG_TAG")
-	if logTag == "" {
-		logTag = DEFAULT_LOG_TAG
+	logMeta := os.Getenv("LOG_META")
+	if logMeta == "" {
+		logMeta = DEFAULT_LOG_TAG
 	}
 
 	logEnabledByDefaultEnv := os.Getenv("LOG_ENABLED_BY_DEFAULT")
@@ -83,7 +83,7 @@ func main() {
 		)
 	}
 
-	af, err := NewAllocationFollower(nomadConfig, logger, logTag, logEnabledByDefault, localNodeOnly)
+	af, err := NewAllocationFollower(nomadConfig, logger, logMeta, logEnabledByDefault, localNodeOnly)
 	if err != nil {
 		logger.Errorf("main", "Error creating Allocation Follower: %s", err)
 		return
@@ -92,17 +92,10 @@ func main() {
 	outChan := af.Start(ALLOC_REFRESH_TICK, saveFile)
 
 	if af != nil {
-		for {
-			select {
-			case message, ok := <-outChan:
-				if ok {
-					fileLogger.Println(message)
-				} else {
-					logger.Info("main", "Allocation Follower fatal error, exiting.")
-					return
-				}
-			}
+		for message := range outChan {
+			fileLogger.Println(message)
 		}
+		logger.Info("main", "Allocation Follower fatal error, exiting.")
 	}
 }
 

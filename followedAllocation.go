@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	nomadApi "github.com/hashicorp/nomad/api"
 )
@@ -15,12 +14,12 @@ type FollowedAllocation struct {
 	Quit                chan struct{}
 	Tasks               []*FollowedTask
 	log                 Logger
-	logTag              string
+	logMeta              string
 	logEnabledByDefault bool
 }
 
 //NewFollowedAllocation creates a new followed allocation
-func NewFollowedAllocation(alloc *nomadApi.Allocation, nomad NomadConfig, outChan chan string, logger Logger, logTag string, logEnabledByDefault bool) *FollowedAllocation {
+func NewFollowedAllocation(alloc *nomadApi.Allocation, nomad NomadConfig, outChan chan string, logger Logger, logMeta string, logEnabledByDefault bool) *FollowedAllocation {
 	return &FollowedAllocation{
 		Alloc:               alloc,
 		Nomad:               nomad,
@@ -28,7 +27,7 @@ func NewFollowedAllocation(alloc *nomadApi.Allocation, nomad NomadConfig, outCha
 		Quit:                make(chan struct{}),
 		Tasks:               make([]*FollowedTask, 0),
 		log:                 logger,
-		logTag:              logTag,
+		logMeta:              logMeta,
 		logEnabledByDefault: logEnabledByDefault,
 	}
 }
@@ -45,13 +44,10 @@ func (f *FollowedAllocation) Start(save *SavedAlloc) {
 		for _, task := range tg.Tasks {
 			ft := NewFollowedTask(f.Alloc, *tg.Name, task, f.Nomad, f.Quit, f.OutputChan, f.log)
 			enabled := f.logEnabledByDefault
-			for _, s := range ft.logTemplate.ServiceTags {
-				if strings.HasPrefix(s, f.logTag) {
-					parts := strings.SplitN(s, ".enabled", 2)
-					if len(parts) == 2  {
-						enabled = parts[1] == "=true" || parts[1] == ""
-						break
-					}
+			// Check TaskMeta for logging configuration
+			if task.Meta != nil {
+				if val, ok := task.Meta[f.logMeta]; ok {
+					enabled = val == "true"
 				}
 			}
 			if enabled {

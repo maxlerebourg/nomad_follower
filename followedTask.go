@@ -32,12 +32,8 @@ var BACKOFF_DELAY = 8
 type NomadLog struct {
 	AllocId       string            `json:"alloc_id"`
 	JobName       string            `json:"job_name"`
-	JobMeta       map[string]string `json:"job_meta"`
 	NodeName      string            `json:"node_name"`
-	ServiceName   string            `json:"-"`
-	ServiceTags   []string          `json:"-"`
-	ServiceTagMap map[string]string `json:"-"`
-	TaskMeta      map[string]string `json:"task_meta"`
+	TaskMeta      map[string]string `json:"-"`
 	TaskName      string            `json:"task_name"`
 	// these all set at log time
 	Timestamp string                 `json:"timestamp"`
@@ -292,34 +288,14 @@ func (ft *FollowedTask) Start(save *SavedTask) {
 
 func createLogTemplate(alloc *nomadApi.Allocation, task *nomadApi.Task) NomadLog {
 	tmpl := NomadLog{}
-	service := nomadApi.Service{}
 
 	tmpl.AllocId = alloc.ID
 	tmpl.JobName = *alloc.Job.Name
-	tmpl.JobMeta = alloc.Job.Meta
 	tmpl.NodeName = alloc.NodeName
-	tmpl.ServiceTags = make([]string, 0)
-	tmpl.ServiceTagMap = make(map[string]string)
-	if len(task.Services) > 0 {
-		// shouldn't have more than one service per task
-		service = *task.Services[0]
-		tmpl.ServiceName = service.Name
-		tmpl.ServiceTags = service.Tags
-		tmpl.ServiceTagMap = getServiceTagMap(service)
-		tmpl.TaskMeta = task.Meta
-	} else {
-		for _, tg := range alloc.Job.TaskGroups {
-			if len(tg.Services) == 0 {
-				continue
-			}
-			for _, t := range tg.Tasks {
-				if t.Name == task.Name {
-					service = *tg.Services[0]
-					tmpl.ServiceName = service.Name
-					tmpl.ServiceTags = service.Tags
-					tmpl.ServiceTagMap = getServiceTagMap(service)
-					tmpl.TaskMeta = t.Meta
-				}
+	for _, tg := range alloc.Job.TaskGroups {
+		for _, t := range tg.Tasks {
+			if t.Name == task.Name {
+				tmpl.TaskMeta = t.Meta
 			}
 		}
 	}
