@@ -117,20 +117,13 @@ func (a *AllocationFollower) Start(duration time.Duration, savePath string) <-ch
 			case <-a.Ticker.C:
 				err := a.collectAllocations(nil)
 				if err != nil {
-					a.log.Debugf(
-						logContext,
-						"Error collecting Allocations: %v",
-						err,
-					)
+					a.log.Debugf(logContext, "Error collecting Allocations: %v", err)
 					// TODO differentiate 403 error from others
 					a.Nomad.RenewToken()
 				}
 				a.createSavePoint(savePath)
 			case <-a.Quit:
-				a.log.Info(
-					logContext,
-					"Stopping Allocation Follower",
-				)
+				a.log.Info(logContext, "Stopping Allocation Follower")
 				// TODO add a.Stop() here?
 				//close(a.OutChan) // cannot do until we know there are no more senders on it
 				return
@@ -165,11 +158,7 @@ func (a *AllocationFollower) createSavePoint(path string) {
 			taskSave := SavedTask{}
 			taskSave.StdErrOffsets = make(map[string]int64)
 			taskSave.StdOutOffsets = make(map[string]int64)
-			taskSave.Key = fmt.Sprintf(
-				"%s:%s",
-				task.TaskGroup,
-				task.Task.Name,
-			)
+			taskSave.Key = fmt.Sprintf("%s:%s", task.TaskGroup, task.Task.Name)
 			taskSave.StdErrOffsets = task.errState.FileOffsets
 			taskSave.StdOutOffsets = task.outState.FileOffsets
 			allocSave.SavedTasks[taskSave.Key] = taskSave
@@ -178,11 +167,7 @@ func (a *AllocationFollower) createSavePoint(path string) {
 	}
 	data, err := json.Marshal(savePoint)
 	if err != nil {
-		a.log.Errorf(
-			logContext,
-			"Cannot create save file, JSON marshal err: %s",
-			err,
-		)
+		a.log.Errorf(logContext, "Cannot create save file, JSON marshal err: %s", err)
 		return
 	}
 	err = ioutil.WriteFile(path, data, 0644)
@@ -211,11 +196,7 @@ func (a *AllocationFollower) restoreSavePoint(path string) *SavePoint {
 		return nil
 	}
 	if a.localNodeOnly && savePoint.NodeID != a.NodeID {
-		a.log.Errorf(
-			logContext,
-			"Cannot restore save from '%s' NodeID differs.",
-			path,
-		)
+		a.log.Errorf(logContext, "Cannot restore save from '%s' NodeID differs.", path)
 		return nil
 	}
 	if savePoint.SaveFormatVersion != SaveFormatVersion {
@@ -228,11 +209,7 @@ func (a *AllocationFollower) restoreSavePoint(path string) *SavePoint {
 		)
 		return nil
 	}
-	a.log.Infof(
-		logContext,
-		"Restored save from file '%s'",
-		path,
-	)
+	a.log.Infof(logContext, "Restored save from file '%s'", path)
 	return &savePoint
 }
 

@@ -349,6 +349,7 @@ func (ft *FollowedTask) processFrame(frame *nomadApi.StreamFrame, streamState St
 	logContext := "FollowedTask.processFrame"
 	messages := strings.Split(string(frame.Data[:]), "\n")
 	jsons := make([]string, 0, INITIAL_OUTPUT_CAP)
+	fmt.Printf("Processing message: %s\n", frame)
 	for _, message := range messages {
 		if message == "" || message == "\n" {
 			continue

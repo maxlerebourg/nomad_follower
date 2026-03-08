@@ -107,11 +107,7 @@ func createLogFile(logFile string, logger Logger) {
 	if os.IsNotExist(err) {
 		var file, err = os.Create(logFile)
 		if err != nil {
-			logger.Infof(
-				"createLogFile",
-				"Error creating log file Error: %v",
-				err,
-			)
+			logger.Infof("createLogFile", "Error creating log file Error: %v", err)
 			return
 		}
 		defer file.Close()
