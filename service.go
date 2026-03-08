@@ -22,7 +22,7 @@ var MAX_LOG_BACKUPS = 1
 var MAX_LOG_AGE = 1
 
 var NOMAD_MAX_WAIT = 5 * time.Minute
-var ALLOC_REFRESH_TICK = time.Second * 30
+var ALLOC_REFRESH_TICK = time.Second * 10
 
 var DEFAULT_VERBOSITY = INFO
 

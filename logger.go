@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
-
-	"github.com/mitchellh/mapstructure"
 )
 
 // LogLevel provides compariable levels and a string representation.
@@ -19,7 +16,6 @@ const (
 	DEBUG
 	INFO
 	ERROR
-	DEADLETTER
 )
 
 // String formats LogLevels as a string for readability.
@@ -29,7 +25,6 @@ func (l LogLevel) String() string {
 	values[DEBUG] = "debug"
 	values[INFO] = "info"
 	values[ERROR] = "error"
-	values[DEADLETTER] = "deadletter"
 
 	s, ok := values[l]
 	if !ok {
@@ -67,8 +62,6 @@ func slogLevelFromLogLevel(level LogLevel) slog.Level {
 		return slog.LevelInfo
 	case ERROR:
 		return slog.LevelError
-	case DEADLETTER:
-		return slog.LevelError + 1 // DeadLetter is higher than Error
 	default:
 		return slog.LevelInfo
 	}
@@ -116,26 +109,4 @@ func (l Logger) Error(name, message string) {
 
 func (l Logger) Errorf(name, message string, f ...interface{}) {
 	l.logFormatAtLevel(name, ERROR, message, f...)
-}
-
-func (l Logger) DeadLetter(name string, rawLog NomadLog, message string) {
-	data := make(map[string]interface{})
-	_ = mapstructure.Decode(rawLog, &data)
-
-	// Convert data map to slog attributes
-	attrs := []slog.Attr{
-		slog.String("name", name),
-		slog.String("log_level", DEADLETTER.String()),
-		slog.Time("datetime", time.Now()),
-	}
-	for k, v := range data {
-		attrs = append(attrs, slog.Any(k, v))
-	}
-
-	l.logger.LogAttrs(context.Background(), slogLevelFromLogLevel(DEADLETTER), message, attrs...)
-}
-
-func (l Logger) DeadLetterf(name string, rawLog NomadLog, message string, f ...interface{}) {
-	msg := fmt.Sprintf(message, f...)
-	l.DeadLetter(name, rawLog, msg)
 }

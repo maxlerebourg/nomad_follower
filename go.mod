@@ -3,10 +3,8 @@ module github.com/sas1024/nomad_follower
 go 1.25
 
 require (
-	github.com/dmwilcox/fuzzytime v0.0.0-20191010161914-05ea0010feac
 	github.com/hashicorp/nomad/api v0.0.0-20260306161221-000e1028d589
 	github.com/hashicorp/vault/api v1.22.0
-	github.com/mitchellh/mapstructure v1.5.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -26,6 +24,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
